@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>宝可梦详情查询</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        /* 关键：父容器容器使用flex布局并限制高度 */
+        .chart-page {
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 60px); /* 减去页面边距 */
+        }
+
+        .info-container {
+            display: flex;
+            gap: 20px;
+            flex: 1; /* 占满剩余高度 */
+            overflow: hidden; /* 隐藏溢出内容 */
+        }
+
+        /* 左侧列表区域 - 限制高度+滚动（核心修改） */
+        .pokemon-list-section {
+            width: 30%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: calc(100vh - 100px); /* 固定高度：视口高度 - 顶部边距 - 间距 */
+            max-height: 800px; /* 最大高度限制，避免大屏过高 */
+        }
+
+        .search-box {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            width: 100%;
+        }
+
+        .pokemon-list {
+            flex: 1; /* 占满剩余高度 */
+            overflow-y: auto; /* 超出部分滚动 */
+            overflow-x: hidden; /* 禁止水平滚动 */
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 10px;
+            /* 自定义滚动条（优化视觉） */
+        }
+
+        /* 自定义滚动条样式（Chrome/Safari） */
+        .pokemon-list::-webkit-scrollbar {
+            width: 6px; /* 滚动条宽度 */
+        }
+        .pokemon-list::-webkit-scrollbar-thumb {
+            background-color: #3498db; /* 滚动条滑块颜色（贴合项目蓝） */
+            border-radius: 3px; /* 滑块圆角 */
+        }
+        .pokemon-list::-webkit-scrollbar-track {
+            background-color: #f5f5f5; /* 滚动条轨道颜色 */
+        }
+
+        .pokemon-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .pokemon-item:hover {
+            background-color: #e8f4fd;
+        }
+
+        .pokemon-item.active {
+            background-color: #d1e7fd;
+            border-left: 3px solid #3498db;
+        }
+
+        /* 右侧详情区域 - 与左侧等高 */
+        .pokemon-detail-section {
+            width: 70%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: calc(100vh - 100px); /* 与左侧保持等高 */
+            max-height: 800px; /* 最大高度限制 */
+            overflow-y: auto; /* 内部滚动 */
+            padding-bottom: 20px; /* 避免底部内容被截断 */
+        }
+
+        .detail-card {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .detail-title {
+            font-size: 24px;
+            color: #2c3e50;
+        }
+
+        .type-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-left: 10px;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .radar-container {
+            height: 400px;
+            width: 100%;
+        }
+
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #999;
+            text-align: center;
+            padding: 40px;
+            height: 100%; /* 占满右侧高度 */
+        }
+
+        .empty-state i {
+            font-size: 60px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            padding: 10px;
+            text-align: center;
+        }
+
+        /* AI介绍区域样式 */
+        .ai-intro-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f7ff;
+            border-radius: 6px;
+            border-left: 3px solid #3498db;
+        }
+
+        .ai-intro-loading {
+            color: #666;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .ai-intro-error {
+            color: #e74c3c;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* 流式输出样式 */
+        .ai-intro-streaming {
+            position: relative;
+        }
+
+        .ai-intro-streaming::after {
+            content: '|';
+            animation: blink 1s infinite;
+            color: #3498db;
+            font-weight: bold;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* 响应式适配：小屏幕调整布局 */
+        @media (max-width: 768px) {
+            .info-container {
+                flex-direction: column;
+            }
+            .pokemon-list-section, .pokemon-detail-section {
+                width: 100%;
+                height: auto; /* 小屏幕取消固定高度 */
+                max-height: none;
+            }
+            .pokemon-list-section {
+                max-height: 300px; /* 小屏幕列表最大高度 */
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chart-page">
+        <div class="chart-header">
+            <h2 class="chart-title">宝可梦详情查询</h2>
+            <a href="../index.html" class="back-btn">返回主页面</a>
+        </div>
+
+        <div class="info-container">
+            <!-- 左侧：精灵列表 + 搜索 -->
+            <div class="pokemon-list-section">
+                <input type="text" class="search-box" placeholder="搜索宝可梦名称..." id="searchInput">
+                <div class="pokemon-list" id="pokemonList"></div>
+            </div>
+
+            <!-- 右侧：详情 + 雷达图 -->
+            <div class="pokemon-detail-section" id="detailSection">
+                <div class="empty-state">
+                    <i>🔍</i>
+                    <h3>请从左侧选择一只宝可梦</h3>
+                    <p>查看它的详细信息和能力对比</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        // 配置DeepSeek API密钥（前端代码仍有泄露风险，生产环境建议通过后端代理）
+        const DEEPSEEK_API_KEY = 'sk-bb6c198c5f734d02b3dd432c6b956c54';
+        const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+
+        let allPokemon = [];
+        let filteredPokemon = [];  // 新增：存储当前筛选后的宝可梦列表
+        let avgAbilities = null;
+        let radarChart = null;
+        let currentAIStreamController = null; // 用于取消正在进行的AI请求
+
+        window.addEventListener('dataLoaded', () => {
+            allPokemon = window.pokemonData || [];
+            filteredPokemon = [...allPokemon];  // 初始化筛选列表为全部数据
+            console.log('加载到的宝可梦数量:', allPokemon.length);
+            
+            if (allPokemon.length === 0) {
+                document.getElementById('pokemonList').innerHTML = 
+                    '<div class="error-message">没有加载到宝可梦数据</div>';
+                return;
+            }
+
+            calculateAvgAbilities();
+            renderPokemonList(filteredPokemon);
+            initEventListeners();
+        });
+
+        function calculateAvgAbilities() {
+            const abilities = window.abilities;
+            const totals = abilities.reduce((acc, ab) => ({ ...acc, [ab]: 0 }), {});
+            let count = 0;
+
+            allPokemon.forEach(p => {
+                count++;
+                abilities.forEach(ab => {
+                    totals[ab] += Number(p[ab]) || 0;
+                });
+            });
+
+            avgAbilities = abilities.map(ab => (totals[ab] / count).toFixed(1));
+        }
+
+        function renderPokemonList(pokemonData) {
+            const listContainer = document.getElementById('pokemonList');
+            listContainer.innerHTML = '';
+
+            if (pokemonData.length === 0) {
+                listContainer.innerHTML = '<div class="empty-state">无匹配的宝可梦</div>';
+                return;
+            }
+
+            pokemonData.forEach((p, index) => {
+                const uniqueId = index;  // 索引基于当前筛选后的列表
+                const item = document.createElement('div');
+                item.className = 'pokemon-item';
+                item.dataset.uniqueId = uniqueId;
+                item.innerHTML = `
+                    <div><strong>${p.Name || '未知名称'}</strong></div>
+                    <div>
+                        <span class="type-badge" style="background-color: ${window.getTypeColor(p["Type 1"])}">
+                            ${p["Type 1"] || '未知'}
+                        </span>
+                        ${p["Type 2"] ? `<span class="type-badge" style="background-color: ${window.getTypeColor(p["Type 2"])}">
+                            ${p["Type 2"]}
+                        </span>` : ''}
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
+        }
+
+        function showPokemonDetail(index) {
+            // 取消正在进行的AI请求
+            if (currentAIStreamController) {
+                currentAIStreamController.abort();
+                currentAIStreamController = null;
+            }
+
+            // 使用筛选后的列表获取数据，而不是原始的allPokemon
+            if (index < 0 || index >= filteredPokemon.length) {
+                console.error('无效的宝可梦索引:', index);
+                return;
+            }
+
+            const pokemon = filteredPokemon[index];
+            if (!pokemon) {
+                console.error('未找到宝可梦数据');
+                return;
+            }
+
+            const detailSection = document.getElementById('detailSection');
+            const abilities = window.abilities;
+
+            // 渲染详情页面，包含AI介绍区域（初始显示加载状态）
+            detailSection.innerHTML = `
+                <div class="detail-card">
+                    <div class="detail-header">
+                        <div>
+                            <h3 class="detail-title">${pokemon.Name || '未知名称'}</h3>
+                            <div>
+                                <span class="type-badge" style="background-color: ${window.getTypeColor(pokemon["Type 1"])}">
+                                    ${pokemon["Type 1"] || '未知'}
+                                </span>
+                                ${pokemon["Type 2"] ? `<span class="type-badge" style="background-color: ${window.getTypeColor(pokemon["Type 2"])}">
+                                    ${pokemon["Type 2"]}
+                                </span>` : ''}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="detail-item">
+                                <span class="detail-label">世代</span>
+                                <span class="detail-value">第${pokemon.Generation || '??'}世代</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">是否传奇</span>
+                                <span class="detail-value">${pokemon.Legendary == "True" ? '是' : '否'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-grid">
+                        ${abilities.map(ab => `
+                            <div class="detail-item">
+                                <span class="detail-label">${ab}</span>
+                                <span class="detail-value">${pokemon[ab] || 0}</span>
+                            </div>
+                        `).join('')}
+                        <div class="detail-item">
+                            <span class="detail-label">总能力值</span>
+                            <span class="detail-value">${pokemon.Total || 0}</span>
+                        </div>
+                    </div>
+
+                    <!-- AI介绍区域 -->
+                    <div class="ai-intro-section" id="aiIntroSection">
+                        <div class="ai-intro-loading">
+                            <p>正在获取${pokemon.Name}的介绍...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-card">
+                    <h3 class="detail-title">能力值对比（与所有宝可梦平均）</h3>
+                    <div class="radar-container" id="comparisonRadar"></div>
+                </div>
+            `;
+
+            document.querySelectorAll('.pokemon-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`.pokemon-item[data-unique-id="${index}"]`).classList.add('active');
+
+            renderRadarChart(pokemon);
+            // 调用API获取AI介绍（流式输出）
+            fetchPokemonIntroStream(pokemon.Name);
+        }
+
+        // 调用DeepSeek API获取宝可梦介绍（流式输出）
+        async function fetchPokemonIntroStream(pokemonName) {
+            const introSection = document.getElementById('aiIntroSection');
+            
+            try {
+                // 创建AbortController以便取消请求
+                const controller = new AbortController();
+                currentAIStreamController = controller;
+                
+                const response = await fetch(DEEPSEEK_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            {
+                                role: "user",
+                                content: `请直接给出一段话介绍宝可梦中的${pokemonName}，不需要前导`
+                            }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 200,
+                        stream: true  // 启用流式输出
+                    }),
+                    signal: controller.signal
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API请求失败: ${response.status}`);
+                }
+
+                // 准备流式读取
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullContent = '';
+                
+                // 更新显示区域为流式输出模式
+                introSection.innerHTML = `
+                    <h4 style="margin-top: 0; color: #2c3e50;">宝可梦介绍</h4>
+                    <p class="ai-intro-streaming" id="aiIntroContent">正在生成介绍...</p>
+                `;
+                
+                const contentElement = document.getElementById('aiIntroContent');
+                
+                // 读取流数据
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    // 解码数据块
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                            try {
+                                const jsonData = JSON.parse(line.substring(6));
+                                const content = jsonData.choices?.[0]?.delta?.content || '';
+                                
+                                if (content) {
+                                    fullContent += content;
+                                    contentElement.textContent = fullContent;
+                                }
+                            } catch (e) {
+                                console.warn('解析流数据出错:', e);
+                            }
+                        }
+                    }
+                }
+                
+                // 完成流式输出，移除光标闪烁效果
+                contentElement.classList.remove('ai-intro-streaming');
+                
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.log('AI请求已取消');
+                    return;
+                }
+                
+                console.error('获取宝可梦介绍失败:', error);
+                introSection.innerHTML = `
+                    <div class="ai-intro-error">
+                        <p>获取介绍失败，请稍后重试</p>
+                        <p style="font-size: 12px;">(${error.message})</p>
+                    </div>
+                `;
+            } finally {
+                currentAIStreamController = null;
+            }
+        }
+
+        function renderRadarChart(pokemon) {
+            const container = document.getElementById('comparisonRadar');
+            if (!container) return;
+
+            if (radarChart) {
+                radarChart.dispose();
+            }
+            radarChart = echarts.init(container);
+
+            const abilities = window.abilities;
+            const pokemonAbilities = abilities.map(ab => Number(pokemon[ab]) || 0);
+
+            radarChart.setOption({
+                tooltip: { trigger: 'item' },
+                legend: {
+                    data: ['当前宝可梦', '所有宝可梦平均'],
+                    top: 0
+                },
+                radar: {
+                    indicator: abilities.map(ab => ({
+                        name: ab,
+                        max: Math.max(...pokemonAbilities, ...avgAbilities.map(Number)) + 50
+                    }))
+                },
+                series: [
+                    {
+                        name: '能力对比',
+                        type: 'radar',
+                        data: [
+                            {
+                                name: '当前宝可梦',
+                                value: pokemonAbilities,
+                                itemStyle: { color: '#3498db' },
+                                lineStyle: { color: '#3498db' },
+                                areaStyle: { color: 'rgba(52, 152, 219, 0.2)' }
+                            },
+                            {
+                                name: '所有宝可梦平均',
+                                value: avgAbilities,
+                                itemStyle: { color: '#e74c3c' },
+                                lineStyle: { color: '#e74c3c' },
+                                areaStyle: { color: 'rgba(231, 76, 60, 0.2)' }
+                            }
+                        ]
+                    }
+                ]
+            });
+
+            window.addEventListener('resize', () => radarChart.resize());
+        }
+
+        function initEventListeners() {
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                const keyword = e.target.value.trim().toLowerCase();
+                filteredPokemon = allPokemon.filter(p => 
+                    (p.Name || '').toLowerCase().includes(keyword)
+                );
+                renderPokemonList(filteredPokemon);  // 渲染筛选后的列表
+            });
+
+            document.getElementById('pokemonList').addEventListener('click', (e) => {
+                const item = e.target.closest('.pokemon-item');
+                if (item) {
+                    const uniqueId = parseInt(item.dataset.uniqueId, 10);
+                    if (!isNaN(uniqueId)) {
+                        showPokemonDetail(uniqueId);  // 使用筛选列表的索引
+                    } else {
+                        console.error('无法获取宝可梦ID');
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

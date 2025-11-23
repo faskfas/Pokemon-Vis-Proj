@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>6维能力值相关性热力图</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="chart-page">
+        <div class="chart-header">
+            <h2 class="chart-title">6维能力值相关性热力图</h2>
+            <a href="../index.html" class="back-btn">返回主页面</a>
+        </div>
+        <div id="heatmapChart" class="chart-container"></div>
+    </div>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        function initHeatmapChart() {
+            const chart = echarts.init(document.getElementById('heatmapChart'));
+            const abilities = window.abilities;
+            const pokemonData = window.pokemonData || [];
+
+            // 提取能力值数据
+            const abilityData = abilities.map(ab => 
+                pokemonData.map(p => Number(p[ab]) || 0)
+            );
+
+            // 计算相关系数矩阵
+            const heatData = [];
+            abilities.forEach((a, i) => {
+                abilities.forEach((b, j) => {
+                    heatData.push([i, j, Number(window.pearsonCorrelation(abilityData[i], abilityData[j]).toFixed(2))]);
+                });
+            });
+
+            chart.setOption({
+                tooltip: {
+                    formatter: p => `${abilities[p.data[0]]}与${abilities[p.data[1]]}相关性: ${p.data[2]}`
+                },
+                xAxis: { type: 'category', data: abilities, axisLabel: { rotate: 30 } }, // 旋转标签避免重叠
+                yAxis: { type: 'category', data: abilities },
+                visualMap: {
+                    min: -1, max: 1, calculable: true,
+                    inRange: { color: ['#61a0a8', '#e0ffff', '#ff6b6b'] }
+                },
+                series: [{
+                    type: 'heatmap',
+                    data: heatData,
+                    label: { show: true, fontSize: 12 }
+                }]
+            });
+
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        window.addEventListener('dataLoaded', initHeatmapChart);
+    </script>
+</body>
+</html>

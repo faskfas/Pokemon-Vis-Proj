@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>普通vs传奇能力对比</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="chart-page">
+        <div class="chart-header">
+            <h2 class="chart-title">普通与传奇宝可梦能力对比</h2>
+            <a href="../index.html" class="back-btn">返回主页面</a>
+        </div>
+        <div id="boxplotChart" class="chart-container"></div>
+    </div>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        function initBoxplotChart() {
+            const chart = echarts.init(document.getElementById('boxplotChart'));
+            const abilities = window.abilities;
+            const pokemonData = window.pokemonData || [];
+            const legendaryData = { true: {}, false: {} };
+
+            // 初始化数据结构
+            abilities.forEach(ab => {
+                legendaryData.true[ab] = [];
+                legendaryData.false[ab] = [];
+            });
+
+            // 分组收集数据
+            pokemonData.forEach(p => {
+                const isLegendary = p.Legendary === true || p.Legendary === 'True';
+                const key = isLegendary.toString();
+                abilities.forEach(ab => {
+                    legendaryData[key][ab].push(Number(p[ab]) || 0);
+                });
+            });
+
+            // 生成箱线图数据
+            const series = [
+                {
+                    name: '普通宝可梦',
+                    type: 'boxplot',
+                    data: abilities.map(ab => window.calculateBoxplotData(legendaryData.false[ab])),
+                    itemStyle: { color: '#66b1ff' }
+                },
+                {
+                    name: '传奇宝可梦',
+                    type: 'boxplot',
+                    data: abilities.map(ab => window.calculateBoxplotData(legendaryData.true[ab])),
+                    itemStyle: { color: '#ff7373' }
+                }
+            ];
+
+            chart.setOption({
+                tooltip: { formatter: p => `${p.seriesName}: ${abilities[p.dataIndex]} 中位数${p.data[2]}` },
+                legend: { data: ['普通宝可梦', '传奇宝可梦'], top: 10 },
+                xAxis: { type: 'category', data: abilities, axisLabel: { rotate: 30 } },
+                yAxis: { type: 'value', name: '能力值', min: 0, max: 200 },
+                series: series
+            });
+
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        window.addEventListener('dataLoaded', initBoxplotChart);
+    </script>
+</body>
+</html>

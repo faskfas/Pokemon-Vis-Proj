@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>攻击-防御能力分布</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="chart-page">
+        <div class="chart-header">
+            <h2 class="chart-title">攻击与防御能力分布（气泡=总能力值）</h2>
+            <a href="../index.html" class="back-btn">返回主页面</a>
+        </div>
+        <div id="scatterChart" class="chart-container"></div>
+    </div>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        function initScatterChart() {
+            const chart = echarts.init(document.getElementById('scatterChart'));
+            const pokemonData = window.pokemonData || [];
+
+            // 1. 处理数据
+            const data = pokemonData.map(p => {
+                if (!p) return { name: '无效数据', value: [0, 0, 0], type1: '无' };
+                const attack = Number(p.Attack) || 0;
+                const defense = Number(p.Defense) || 0;
+                const total = Number(p.Total) || 0;
+                return {
+                    name: p.Name || `未知#${p["#"] || "??"}`,
+                    value: [attack, defense, total],
+                    type1: p["Type 1"] || "无"
+                };
+            });
+            const types = [...new Set(data.map(item => item.type1))];
+
+            // 2. 构造带“全选”的图例数据
+            const legendData = ['全选', ...types];
+            // 默认全选：所有系列（包括全选和属性系列）都显示
+            const defaultSelected = {};
+            legendData.forEach(name => defaultSelected[name] = true);
+
+            // 3. 图表配置
+            const option = {
+                tooltip: {
+                    formatter: p => {
+                        if (!p.data) return '数据异常';
+                        const d = p.data;
+                        return `
+                            <div>${d.name}</div>
+                            <div>攻击: ${d.value[0]}</div>
+                            <div>防御: ${d.value[1]}</div>
+                            <div>总能力: ${d.value[2]}</div>
+                        `;
+                    }
+                },
+                legend: {
+                    data: legendData,
+                    selected: defaultSelected, // 默认全选
+                    right: 10,
+                    top: 'center',
+                    orient: 'vertical',
+                    textStyle: { fontSize: 10 },
+                    selectedMode: 'multiple'
+                },
+                xAxis: { type: 'value', name: '攻击值', min: 0 },
+                yAxis: { type: 'value', name: '防御值', min: 0 },
+                series: [
+                    // 全选系列（包含所有数据，使用原始颜色）
+                    {
+                        name: '全选',
+                        type: 'scatter',
+                        symbolSize: p => {
+                            if (!p?.data?.value || p.data.value.length < 3) return 5;
+                            const total = Number(p.data.value[2]) || 0;
+                            return Math.max(5, total / 10);
+                        },
+                        data: data,
+                        // 关键：使用回调函数动态匹配原始属性颜色
+                        itemStyle: {
+                            color: params => window.getTypeColor(params.data.type1)
+                        }
+                    },
+                    // 属性系列（默认显示，保持原有颜色）
+                    ...types.map(type => ({
+                        name: type,
+                        type: 'scatter',
+                        symbolSize: p => {
+                            if (!p?.data?.value || p.data.value.length < 3) return 5;
+                            const total = Number(p.data.value[2]) || 0;
+                            return Math.max(5, total / 10);
+                        },
+                        data: data.filter(item => item.type1 === type),
+                        itemStyle: { color: window.getTypeColor(type) }
+                    }))
+                ],
+                grid: { left: 30, right: 120 }
+            };
+
+            chart.setOption(option);
+
+            // 4. 图例点击联动逻辑
+            chart.on('legendselectchanged', params => {
+                const selected = { ...chart.getOption().legend[0].selected };
+                const isAllSelected = params.selected[params.name]; // 当前点击项的选中状态
+
+                // 点击“全选”时：同步所有属性系列的状态
+                if (params.name === '全选') {
+                    types.forEach(type => {
+                        selected[type] = isAllSelected;
+                    });
+                } else {
+                    // 点击属性系列时：检查是否所有属性都被选中，同步“全选”状态
+                    const allSelected = types.every(type => selected[type]);
+                    selected['全选'] = allSelected;
+                }
+
+                // 更新图例状态
+                chart.setOption({ legend: { selected: selected } });
+            });
+
+            // 窗口适配
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        window.addEventListener('dataLoaded', initScatterChart);
+    </script>
+</body>
+</html>

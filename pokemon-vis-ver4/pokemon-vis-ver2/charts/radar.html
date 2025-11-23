@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>各属性平均能力雷达图</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="chart-page">
+        <div class="chart-header">
+            <h2 class="chart-title">各属性平均6维能力雷达图</h2>
+            <a href="../index.html" class="back-btn">返回主页面</a>
+        </div>
+        <div id="radarChart" class="chart-container"></div>
+    </div>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        function initRadarChart() {
+            const chart = echarts.init(document.getElementById('radarChart'));
+            const abilities = window.abilities;
+            const pokemonData = window.pokemonData || [];
+
+            // 1. 计算各属性平均能力值
+            const typeAvg = {};
+            pokemonData.forEach(p => {
+                const type = p["Type 1"] || "无";
+                if (!typeAvg[type]) {
+                    typeAvg[type] = { count: 0, HP: 0, Attack: 0, Defense: 0, "Sp. Atk": 0, "Sp. Def": 0, Speed: 0 };
+                }
+                typeAvg[type].count++;
+                abilities.forEach(ab => {
+                    typeAvg[type][ab] += Number(p[ab]) || 0;
+                });
+            });
+
+            // 提取所有属性类型
+            const types = Object.keys(typeAvg);
+
+            // 2. 构造带“全选”的图例数据
+            const legendData = ['全选', ...types];
+            // 默认全选：所有系列都显示
+            const defaultSelected = {};
+            legendData.forEach(name => defaultSelected[name] = true);
+
+            // 3. 准备雷达图数据
+            // 全选系列数据（包含所有属性的平均能力）
+            const allTypeData = types.map(type => ({
+                name: type,
+                value: abilities.map(ab => (typeAvg[type][ab] / typeAvg[type].count).toFixed(1)),
+                type: type // 保存原始类型用于颜色映射
+            }));
+
+            // 4. 图表配置
+            const option = {
+                tooltip: { trigger: 'item' },
+                legend: {
+                    data: legendData,
+                    selected: defaultSelected, // 默认全选
+                    bottom: 10,
+                    type: 'scroll',
+                    textStyle: { fontSize: 10 },
+                    selectedMode: 'multiple'
+                },
+                radar: {
+                    indicator: abilities.map(ab => ({ name: ab, max: 150 }))
+                },
+                series: [
+                    // 全选系列（包含所有属性数据，保持原始颜色）
+                    {
+                        name: '全选',
+                        type: 'radar',
+                        data: allTypeData,
+                        // 动态匹配原始属性颜色
+                        itemStyle: {
+                            color: params => window.getTypeColor(params.data.type)
+                        },
+                        lineStyle: {
+                            color: params => window.getTypeColor(params.data.type)
+                        }
+                    },
+                    // 各属性单独系列（默认显示）
+                    ...types.map(type => ({
+                        name: type,
+                        type: 'radar',
+                        data: [{
+                            value: abilities.map(ab => (typeAvg[type][ab] / typeAvg[type].count).toFixed(1)),
+                            name: type
+                        }],
+                        itemStyle: { color: window.getTypeColor(type) },
+                        lineStyle: { color: window.getTypeColor(type) }
+                    }))
+                ],
+                grid: { bottom: 80 }
+            };
+
+            chart.setOption(option);
+
+            // 5. 图例点击联动逻辑
+            chart.on('legendselectchanged', params => {
+                const selected = { ...chart.getOption().legend[0].selected };
+                const isAllSelected = params.selected[params.name];
+
+                // 点击“全选”时：同步所有属性系列的显示状态
+                if (params.name === '全选') {
+                    types.forEach(type => {
+                        selected[type] = isAllSelected;
+                    });
+                } else {
+                    // 点击属性系列时：检查是否所有属性都被选中，同步“全选”状态
+                    const allSelected = types.every(type => selected[type]);
+                    selected['全选'] = allSelected;
+                }
+
+                // 更新图例状态
+                chart.setOption({ legend: { selected: selected } });
+            });
+
+            // 窗口适配
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        window.addEventListener('dataLoaded', initRadarChart);
+    </script>
+</body>
+</html>
