@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>宝可梦可视化</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        :root {
+            --pika-yellow: #FFCB05;
+            --poke-red: #DE1010;
+            --poke-red-dark: #C00F0F;
+            --poke-blue: #3B4CCA;
+            --white: #FFFFFF;
+            --shadow-soft: 0 4px 12px rgba(0,0,0,0.08);
+            --shadow-glow: 0 0 15px rgba(255, 203, 5, 0.4);
+            --border-radius-sm: 8px;
+            --border-radius-md: 12px;
+            --border-radius-lg: 20px;
+            --border-radius-circle: 50%;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Comic Sans MS", "Microsoft YaHei", sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 1400px;
+            height: 80vh;
+            min-height: 600px;
+            margin: 0 auto 30px; /* 与下方功能区保留间距 */
+            background-color: var(--white);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-soft);
+            display: flex;
+            overflow: hidden;
+            border: 3px solid var(--poke-red);
+        }
+
+        /* 左侧功能区（保留原样式） */
+        .left-panel {
+            width: 280px;
+            background: linear-gradient(135deg, var(--poke-red), var(--poke-red-dark));
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            color: var(--white);
+        }
+
+        .panel-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px dashed rgba(255,255,255,0.3);
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(to bottom, var(--poke-red) 50%, var(--white) 50%);
+            border-radius: var(--border-radius-circle);
+            border: 2px solid #2A2A2A;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .logo-icon::after {
+            content: "";
+            width: 12px;
+            height: 12px;
+            background: #2A2A2A;
+            border-radius: var(--border-radius-circle);
+            border: 2px solid var(--white);
+        }
+
+        .panel-title {
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .panel-desc {
+            font-size: 14px;
+            line-height: 1.6;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .function-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex: 1;
+        }
+
+        .func-btn {
+            padding: 16px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: var(--border-radius-md);
+            color: var(--white);
+            text-decoration: none;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            border-left: 4px solid var(--pika-yellow);
+        }
+
+        .func-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateX(8px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .func-btn i {
+            font-size: 20px;
+            color: var(--pika-yellow);
+        }
+
+        /* 右侧区域：保留原背景图，仅调整文字与图标 */
+        .right-panel {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            border-left: 3px solid var(--pika-yellow);
+        }
+
+        /* 保留原背景图 */
+        .bg-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* 调整文字位置：避开背景图中的皮卡丘主体 */
+        .panel-caption {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            max-width: 400px; /* 限制文字宽度，避免遮挡 */
+            z-index: 2;
+            color: var(--white);
+        }
+
+        .caption-title {
+            font-size: 32px;
+            margin-bottom: 15px;
+            text-shadow: 0 3px 6px rgba(0,0,0,0.5);
+            -webkit-text-stroke: 1px var(--poke-red);
+        }
+
+        .caption-desc {
+            font-size: 16px;
+            line-height: 1.7;
+            background: rgba(0,0,0,0.4);
+            padding: 10px 15px;
+            border-radius: var(--border-radius-sm);
+            border-left: 3px solid var(--pika-yellow);
+            backdrop-filter: blur(2px);
+        }
+
+        /* 底部徽章：删除小裙子，替换为宝可梦图标 */
+        .badge-container {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 15px;
+            z-index: 2;
+        }
+
+        .badge {
+            width: 55px;
+            height: 55px;
+            border-radius: var(--border-radius-circle);
+            background: linear-gradient(135deg, var(--pika-yellow), #FFE666);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--poke-red);
+            box-shadow: var(--shadow-glow);
+            transition: transform 0.3s ease;
+        }
+
+        .badge:hover {
+            transform: scale(1.15) rotate(5deg);
+        }
+
+        .badge img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+        }
+
+        /* 恢复底部功能介绍交互区 */
+        .intro-section {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: var(--white);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-soft);
+            padding: 40px 30px;
+            display: flex;
+            align-items: center;
+            gap: 40px;
+            border: 3px solid var(--pika-yellow);
+        }
+
+        /* 交互皮卡丘样式 */
+        .pokemon-character {
+            width: 200px;
+            height: 200px;
+            border-radius: var(--border-radius-circle);
+            background: linear-gradient(135deg, var(--pika-yellow), #FFE666);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-glow), 0 8px 16px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+            border: 4px solid var(--poke-red);
+            position: relative;
+        }
+
+        /* 皮卡丘上的精灵球装饰 */
+        .pokemon-character::after {
+            content: "";
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(to bottom, var(--poke-red) 50%, var(--white) 50%);
+            border-radius: var(--border-radius-circle);
+            border: 2px solid #2A2A2A;
+        }
+        .pokemon-character::before {
+            content: "";
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 12px;
+            height: 12px;
+            background: #2A2A2A;
+            border-radius: var(--border-radius-circle);
+            border: 2px solid var(--white);
+            z-index: 1;
+        }
+
+        .pokemon-character img {
+            width: 150px;
+            height: 150px;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+            transition: transform 0.3s ease;
+        }
+
+        .pokemon-character:hover {
+            transform: scale(1.05) rotate(5deg);
+            box-shadow: 0 0 25px rgba(255, 203, 5, 0.7), 0 8px 16px rgba(0,0,0,0.25);
+        }
+        .pokemon-character:hover img {
+            transform: scale(1.1) rotate(-5deg);
+        }
+
+        /* 旋转动画 */
+        .pokemon-character.rotate {
+            animation: rotate-poke 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        @keyframes rotate-poke {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(720deg) scale(1.1); }
+            100% { transform: rotate(1080deg) scale(1); }
+        }
+
+        /* 功能介绍文本区 */
+        .intro-content {
+            flex: 1;
+        }
+        .intro-title {
+            font-size: 28px;
+            color: var(--poke-red);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            -webkit-text-stroke: 0.5px var(--pika-yellow);
+        }
+        .intro-title i {
+            color: var(--pika-yellow);
+            font-size: 32px;
+            animation: bounce-poke 2s infinite;
+        }
+        @keyframes bounce-poke {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(10deg); }
+        }
+
+        .intro-text {
+            font-size: 17px;
+            color: #2A2A2A;
+            line-height: 1.9;
+            padding: 20px 25px;
+            background: #f5f5f5;
+            border-radius: var(--border-radius-md);
+            border-left: 5px solid var(--poke-red);
+            min-height: 120px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 900px) {
+            .main-container {
+                flex-direction: column;
+                height: auto;
+                border-width: 2px;
+            }
+            .left-panel {
+                width: 100%;
+                height: auto;
+                border-bottom: 3px solid var(--pika-yellow);
+            }
+            .right-panel {
+                height: 400px;
+                border-left: none;
+            }
+            .panel-caption {
+                top: 20px;
+                left: 20px;
+                right: 20px;
+                max-width: none;
+            }
+            .caption-title {
+                font-size: 30px;
+            }
+            .badge-container {
+                gap: 15px;
+                bottom: 20px;
+                right: 20px;
+            }
+            .badge {
+                width: 55px;
+                height: 55px;
+            }
+            /* 功能区响应式 */
+            .intro-section {
+                flex-direction: column;
+                text-align: center;
+                padding: 30px 20px;
+                gap: 30px;
+                border-width: 2px;
+            }
+            .intro-title {
+                justify-content: center;
+                font-size: 24px;
+            }
+            .intro-text {
+                text-align: left;
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .pokemon-character {
+                width: 160px;
+                height: 160px;
+            }
+            .pokemon-character img {
+                width: 120px;
+                height: 120px;
+            }
+            .intro-text {
+                padding: 15px 20px;
+            }
+            .caption-title {
+                font-size: 24px;
+            }
+            .caption-desc {
+                font-size: 15px;
+            }
+            .badge {
+                width: 45px;
+                height: 45px;
+            }
+            .badge img {
+                width: 28px;
+                height: 28px;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="main-container">
+        <div class="left-panel">
+            <div class="panel-header">
+                <div class="logo">
+                    <div class="logo-icon"></div>
+                    <h1 class="panel-title">宝可梦可视化</h1>
+                </div>
+                <p class="panel-desc">
+                    探索宝可梦的属性特征、能力分布和世代演变，通过交互式图表深入了解每只宝可梦的独特之处。
+                </p>
+            </div>
+
+            <div class="function-buttons">
+                <a href="charts/info.html" class="func-btn">
+                    <img src="./imgs/func-btn-img1.png" alt="精灵具体属性信息图标" style="width: 25px; height: 25px;">
+                    精灵具体属性信息
+                </a>
+                <a href="charts/stacked.html" class="func-btn">
+                    <img src="./imgs/func-btn-img2.png" alt="各世代属性数量变化图标" style="width: 25px; height: 25px;">
+                    各世代属性数量变化
+                </a>
+                <a href="charts/heatmap.html" class="func-btn">
+                    <img src="./imgs/func-btn-img3.png" alt="6维能力值相关性热力图图标" style="width: 25px; height: 25px;">
+                    6维能力值相关性热力图
+                </a>
+                <a href="charts/boxplot.html" class="func-btn">
+                    <img src="./imgs/func-btn-img4.png" alt="普通vs传奇能力对比图标" style="width: 25px; height: 25px;">
+                    普通vs传奇能力对比
+                </a>
+                <a href="charts/scatter.html" class="func-btn">
+                    <img src="./imgs/func-btn-img5.png" alt="攻击-防御能力分布图标" style="width: 25px; height: 25px;">
+                    攻击-防御能力分布
+                </a>
+                <a href="charts/radar.html" class="func-btn">
+                    <img src="./imgs/func-btn-img6.png" alt="各属性平均能力雷达图图标" style="width: 25px; height: 25px;">
+                    各属性平均能力雷达图
+                </a>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <!-- 保留原背景图 -->
+            <img src="./imgs/9c016f5106c692c6730277983422cf47.jpg" class="bg-image" alt="宝可梦主题背景">
+            
+            <!-- 调整后的文字区域 -->
+            <div class="panel-caption">
+                <h2 class="caption-title">探索宝可梦的奇妙世界</h2>
+                <p class="caption-desc">
+                    跨越多个世代，解析宝可梦的能力平衡与属性克制关系，发现数据背后的战斗策略
+                </p>
+            </div>
+
+            <!-- 替换小裙子为宝可梦图标 -->
+            <div class="badge-container">
+                <div class="badge">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/International_Pok%C3%A9mon_logo.svg/600px-International_Pok%C3%A9mon_logo.svg.png" alt="宝可梦标志">
+                </div>
+                <div class="badge">
+                    <img src="https://cdn-icons-png.flaticon.com/512/4219/4219895.png" alt="精灵球">
+                </div>
+                <div class="badge">
+                    <img src="./imgs/111.png" alt="妙蛙种子">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 恢复底部功能介绍交互区 -->
+    <div class="intro-section">
+        <div class="pokemon-character" id="interactivePokemon">
+            <img src="./imgs/tangmao.png" alt="皮卡丘交互精灵">
+        </div>
+        
+        <div class="intro-content">
+            <h3 class="intro-title"><i class="fas fa-comment-dots"></i> 功能介绍</h3>
+            <div class="intro-text" id="introText">
+                点击左侧精灵，开始了解各个功能的详细介绍吧！
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 功能介绍数据
+        const functionIntroductions = [
+            {
+                title: "精灵具体属性信息",
+                desc: "查看每只宝可梦的详细属性，包括类型、世代、是否传奇，以及6维能力值（HP、攻击、防御等），还能通过雷达图对比该宝可梦与所有宝可梦的平均能力水平。"
+            },
+            {
+                title: "各世代属性数量变化",
+                desc: "通过堆叠柱状图展示从第1世代到第6世代，各种属性宝可梦的数量变化趋势，直观了解不同属性在各个世代的受欢迎程度和设计侧重。"
+            },
+            {
+                title: "6维能力值相关性热力图",
+                desc: "通过热力图清晰展示HP、攻击、防御、特攻、特防、速度6种能力值之间的相关性，帮助你发现宝可梦能力分布的内在规律。"
+            },
+            {
+                title: "普通vs传奇能力对比",
+                desc: "使用箱线图对比普通宝可梦与传奇宝可梦在6维能力值上的分布差异，直观感受传奇宝可梦的能力优势和数值平衡设计。"
+            },
+            {
+                title: "攻击-防御能力分布",
+                desc: "通过散点图展示所有宝可梦的攻击与防御能力分布，帮助你快速识别高攻高防、高攻低防等不同类型的宝可梦，为战斗搭配提供参考。"
+            },
+            {
+                title: "各属性平均能力雷达图",
+                desc: "对比不同属性宝可梦的平均能力值雷达图，了解每种属性的核心能力优势（如电系速度快、岩石系防御高），深入掌握属性特性。"
+            }
+        ];
+
+        let currentIndex = 0;
+        let lastClickTime = 0;
+        const clickInterval = 500;
+        let isRotating = false;
+
+        const pokemonEl = document.getElementById('interactivePokemon');
+        const introTextEl = document.getElementById('introText');
+
+        // 点击皮卡丘切换功能介绍
+        pokemonEl.addEventListener('click', () => {
+            const now = Date.now();
+            const timeDiff = now - lastClickTime;
+
+            // 防止快速点击
+            if (timeDiff < clickInterval && !isRotating) {
+                handleFastClick();
+                return;
+            }
+
+            if (!isRotating) {
+                lastClickTime = now;
+                showNextIntroduction();
+            }
+        });
+
+        // 快速点击提示
+        function handleFastClick() {
+            isRotating = true;
+            pokemonEl.classList.add('rotate');
+            introTextEl.innerHTML = `<strong style="color: var(--poke-red);">点击太快了！</strong><br>请慢慢点击，让我一个个为你介绍～`;
+
+            setTimeout(() => {
+                pokemonEl.classList.remove('rotate');
+                isRotating = false;
+                const currentIntro = functionIntroductions[currentIndex];
+                introTextEl.innerHTML = `<strong style="color: var(--poke-red);">${currentIntro.title}：</strong>${currentIntro.desc}`;
+            }, 2000);
+        }
+
+        // 切换下一个功能介绍
+        function showNextIntroduction() {
+            const intro = functionIntroductions[currentIndex];
+            introTextEl.innerHTML = `<strong style="color: var(--poke-red);">${intro.title}：</strong>${intro.desc}`;
+            currentIndex = (currentIndex + 1) % functionIntroductions.length;
+        }
+
+        // 根据URL激活对应按钮（可选功能）
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentPath = window.location.pathname;
+            const funcButtons = document.querySelectorAll('.func-btn');
+            funcButtons.forEach(btn => {
+                if (currentPath.includes(btn.getAttribute('href'))) {
+                    btn.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

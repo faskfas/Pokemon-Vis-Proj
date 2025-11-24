@@ -188,27 +188,32 @@
             padding: 20px;
         }
 
+        .typing-indicator {
+            display: inline-flex;
+            gap: 4px;
+            margin-left: 5px;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background-color: #666;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
         .ai-intro-error {
             color: #e74c3c;
             text-align: center;
             padding: 20px;
-        }
-
-        /* 流式输出样式 */
-        .ai-intro-streaming {
-            position: relative;
-        }
-
-        .ai-intro-streaming::after {
-            content: '|';
-            animation: blink 1s infinite;
-            color: #3498db;
-            font-weight: bold;
-        }
-
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0; }
         }
 
         /* 响应式适配：小屏幕调整布局 */
@@ -264,7 +269,7 @@
         let filteredPokemon = [];  // 新增：存储当前筛选后的宝可梦列表
         let avgAbilities = null;
         let radarChart = null;
-        let currentAIStreamController = null; // 用于取消正在进行的AI请求
+        let currentAbortController = null; // 用于取消当前的API请求
 
         window.addEventListener('dataLoaded', () => {
             allPokemon = window.pokemonData || [];
@@ -327,10 +332,10 @@
         }
 
         function showPokemonDetail(index) {
-            // 取消正在进行的AI请求
-            if (currentAIStreamController) {
-                currentAIStreamController.abort();
-                currentAIStreamController = null;
+            // 如果有正在进行的请求，取消它
+            if (currentAbortController) {
+                currentAbortController.abort();
+                currentAbortController = null;
             }
 
             // 使用筛选后的列表获取数据，而不是原始的allPokemon
@@ -390,8 +395,11 @@
 
                     <!-- AI介绍区域 -->
                     <div class="ai-intro-section" id="aiIntroSection">
+                        <h4 style="margin-top: 0; color: #2c3e50;">宝可梦介绍</h4>
                         <div class="ai-intro-loading">
-                            <p>正在获取${pokemon.Name}的介绍...</p>
+                            <p>正在生成<span class="typing-indicator">
+                                <span></span><span></span><span></span>
+                            </span></p>
                         </div>
                     </div>
                 </div>
@@ -408,19 +416,26 @@
             document.querySelector(`.pokemon-item[data-unique-id="${index}"]`).classList.add('active');
 
             renderRadarChart(pokemon);
-            // 调用API获取AI介绍（流式输出）
+            // 调用API获取AI介绍（流式）
             fetchPokemonIntroStream(pokemon.Name);
         }
 
         // 调用DeepSeek API获取宝可梦介绍（流式输出）
         async function fetchPokemonIntroStream(pokemonName) {
             const introSection = document.getElementById('aiIntroSection');
+            const contentElement = document.createElement('p');
+            contentElement.style.marginBottom = '0';
+            
+            // 替换加载指示器为内容容器
+            introSection.innerHTML = `
+                <h4 style="margin-top: 0; color: #2c3e50;">宝可梦介绍</h4>
+            `;
+            introSection.appendChild(contentElement);
+
+            // 创建新的AbortController
+            currentAbortController = new AbortController();
             
             try {
-                // 创建AbortController以便取消请求
-                const controller = new AbortController();
-                currentAIStreamController = controller;
-                
                 const response = await fetch(DEEPSEEK_API_URL, {
                     method: 'POST',
                     headers: {
@@ -437,72 +452,71 @@
                         ],
                         temperature: 0.7,
                         max_tokens: 200,
-                        stream: true  // 启用流式输出
+                        stream: true  // 启用流式响应
                     }),
-                    signal: controller.signal
+                    signal: currentAbortController.signal  // 关联abort信号
                 });
 
                 if (!response.ok) {
                     throw new Error(`API请求失败: ${response.status}`);
                 }
 
-                // 准备流式读取
+                // 获取响应流的阅读器
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let fullContent = '';
-                
-                // 更新显示区域为流式输出模式
-                introSection.innerHTML = `
-                    <h4 style="margin-top: 0; color: #2c3e50;">宝可梦介绍</h4>
-                    <p class="ai-intro-streaming" id="aiIntroContent">正在生成介绍...</p>
-                `;
-                
-                const contentElement = document.getElementById('aiIntroContent');
-                
-                // 读取流数据
+
+                // 循环读取流数据
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    
-                    // 解码数据块
+
+                    // 解码接收到的二进制数据
                     const chunk = decoder.decode(value, { stream: true });
-                    const lines = chunk.split('\n');
                     
+                    // 处理每个SSE事件
+                    const lines = chunk.split('\n');
                     for (const line of lines) {
-                        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                        const trimmedLine = line.trim();
+                        if (trimmedLine === '') continue;
+                        if (trimmedLine === 'data: [DONE]') break;
+                        
+                        if (trimmedLine.startsWith('data: ')) {
                             try {
-                                const jsonData = JSON.parse(line.substring(6));
-                                const content = jsonData.choices?.[0]?.delta?.content || '';
+                                const jsonStr = trimmedLine.slice(6); // 移除'data: '前缀
+                                const data = JSON.parse(jsonStr);
                                 
+                                // 提取内容片段并累加
+                                const content = data.choices?.[0]?.delta?.content || '';
                                 if (content) {
                                     fullContent += content;
+                                    // 更新DOM显示
                                     contentElement.textContent = fullContent;
                                 }
                             } catch (e) {
-                                console.warn('解析流数据出错:', e);
+                                console.error('解析流式数据失败:', e);
                             }
                         }
                     }
                 }
-                
-                // 完成流式输出，移除光标闪烁效果
-                contentElement.classList.remove('ai-intro-streaming');
-                
+
             } catch (error) {
-                if (error.name === 'AbortError') {
-                    console.log('AI请求已取消');
-                    return;
+                // 忽略中止错误（用户主动切换宝可梦时会触发）
+                if (error.name !== 'AbortError') {
+                    console.error('获取宝可梦介绍失败:', error);
+                    introSection.innerHTML = `
+                        <h4 style="margin-top: 0; color: #2c3e50;">宝可梦介绍</h4>
+                        <div class="ai-intro-error">
+                            <p>获取介绍失败，请稍后重试</p>
+                            <p style="font-size: 12px;">(${error.message})</p>
+                        </div>
+                    `;
                 }
-                
-                console.error('获取宝可梦介绍失败:', error);
-                introSection.innerHTML = `
-                    <div class="ai-intro-error">
-                        <p>获取介绍失败，请稍后重试</p>
-                        <p style="font-size: 12px;">(${error.message})</p>
-                    </div>
-                `;
             } finally {
-                currentAIStreamController = null;
+                // 清除当前请求控制器
+                if (currentAbortController?.signal.aborted === false) {
+                    currentAbortController = null;
+                }
             }
         }
 

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>各世代世代属性数量变化</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="chart-page">
+        <div class="chart-header">
+            <h2 class="chart-title">各世代世代属性数量变化</h2>
+            <a href="../index.html" class="back-btn">返回主页面</a>
+        </div>
+        <div id="stackedChart" class="chart-container"></div>
+    </div>
+
+    <script src="../js/data.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        function initStackedChart() {
+            const chart = echarts.init(document.getElementById('stackedChart'));
+            const pokemonData = window.pokemonData || [];
+            const generations = [...new Set(pokemonData.map(p => p.Generation))].sort((a, b) => a - b);
+            const types = [...new Set(pokemonData.map(p => p["Type 1"]))];
+
+            // 处理数据：生成各属性系列数据
+            const typeSeries = types.map(type => ({
+                name: type,
+                type: 'bar',
+                stack: 'total',
+                data: generations.map(gen => 
+                    pokemonData.filter(p => p.Generation === gen && p["Type 1"] === type).length
+                ),
+                itemStyle: { color: window.getTypeColor(type) }
+            }));
+
+            // 添加"全选"系列（与scatter.html保持一致的颜色逻辑）
+            const allSeries = {
+                name: '全选',
+                type: 'bar',
+                // 关键：使用包含type1字段的完整数据结构（用于颜色映射）
+                data: generations.map(gen => ({
+                    value: 0,  // 数值为0不影响显示
+                    type1: '无'  // 默认为"无"类型的颜色（与scatter.html一致）
+                })),
+                // 与scatter.html相同的颜色回调：使用数据中的type1获取颜色
+                itemStyle: {
+                    color: params => window.getTypeColor(params.data.type1)
+                },
+                emphasis: { disabled: true },
+                silent: true
+            };
+
+            // 图例数据
+            const legendData = ['全选', ...types];
+            const defaultSelected = {};
+            legendData.forEach(name => defaultSelected[name] = true);
+
+            chart.setOption({
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                legend: {
+                    data: legendData,
+                    selected: defaultSelected,
+                    right: 10,
+                    top: 'center',
+                    orient: 'vertical',
+                    textStyle: { fontSize: 10 },
+                    selectedMode: 'multiple'
+                },
+                xAxis: { 
+                    type: 'category', 
+                    data: generations.map(g => `第${g}世代`),
+                    axisLabel: { interval: 0 },
+                    barCategoryGap: '0%'
+                },
+                yAxis: { type: 'value', name: '宝可梦数量' },
+                series: [allSeries, ...typeSeries],
+                barGap: '-100%',
+                grid: { left: 30, right: 120 }
+            });
+
+            // 图例点击联动逻辑
+            chart.on('legendselectchanged', params => {
+                const selected = { ...chart.getOption().legend[0].selected };
+                const isAllSelected = params.selected[params.name];
+
+                if (params.name === '全选') {
+                    types.forEach(type => {
+                        selected[type] = isAllSelected;
+                    });
+                } else {
+                    const allSelected = types.every(type => selected[type]);
+                    selected['全选'] = allSelected;
+                }
+
+                chart.setOption({ legend: { selected: selected } });
+            });
+
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        window.addEventListener('dataLoaded', initStackedChart);
+    </script>
+</body>
+</html>
