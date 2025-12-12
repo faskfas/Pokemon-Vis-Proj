@@ -6,28 +6,25 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <link rel="stylesheet" href="../css/style.css">
     <style>
-        /* 关键：父容器容器使用flex布局并限制高度 */
         .chart-page {
             display: flex;
             flex-direction: column;
-            min-height: calc(100vh - 60px); /* 减去页面边距 */
+            min-height: calc(100vh - 60px); 
         }
 
         .info-container {
             display: flex;
             gap: 20px;
-            flex: 1; /* 占满剩余高度 */
-            overflow: hidden; /* 隐藏溢出内容 */
+            flex: 1; 
+            overflow: hidden; 
         }
-
-        /* 左侧列表区域 - 限制高度+滚动（核心修改） */
         .pokemon-list-section {
             width: 30%;
             display: flex;
             flex-direction: column;
             gap: 15px;
-            height: calc(100vh - 100px); /* 固定高度：视口高度 - 顶部边距 - 间距 */
-            max-height: 800px; /* 最大高度限制，避免大屏过高 */
+            height: calc(100vh - 100px); 
+            max-height: 800px; 
         }
 
         .search-box {
@@ -39,25 +36,23 @@
         }
 
         .pokemon-list {
-            flex: 1; /* 占满剩余高度 */
-            overflow-y: auto; /* 超出部分滚动 */
-            overflow-x: hidden; /* 禁止水平滚动 */
+            flex: 1; 
+            overflow-y: auto; 
+            overflow-x: hidden; 
             border: 1px solid #eee;
             border-radius: 6px;
             padding: 10px;
-            /* 自定义滚动条（优化视觉） */
         }
 
-        /* 自定义滚动条样式（Chrome/Safari） */
         .pokemon-list::-webkit-scrollbar {
-            width: 6px; /* 滚动条宽度 */
+            width: 6px; 
         }
         .pokemon-list::-webkit-scrollbar-thumb {
-            background-color: #3498db; /* 滚动条滑块颜色（贴合项目蓝） */
-            border-radius: 3px; /* 滑块圆角 */
+            background-color: #3498db; 
+            border-radius: 3px;
         }
         .pokemon-list::-webkit-scrollbar-track {
-            background-color: #f5f5f5; /* 滚动条轨道颜色 */
+            background-color: #f5f5f5; 
         }
 
         .pokemon-item {
@@ -77,17 +72,15 @@
             background-color: #d1e7fd;
             border-left: 3px solid #3498db;
         }
-
-        /* 右侧详情区域 - 与左侧等高 */
         .pokemon-detail-section {
             width: 70%;
             display: flex;
             flex-direction: column;
             gap: 20px;
-            height: calc(100vh - 100px); /* 与左侧保持等高 */
-            max-height: 800px; /* 最大高度限制 */
-            overflow-y: auto; /* 内部滚动 */
-            padding-bottom: 20px; /* 避免底部内容被截断 */
+            height: calc(100vh - 100px); 
+            max-height: 800px; 
+            overflow-y: auto; 
+            padding-bottom: 20px;
         }
 
         .detail-card {
@@ -158,7 +151,7 @@
             color: #999;
             text-align: center;
             padding: 40px;
-            height: 100%; /* 占满右侧高度 */
+            height: 100%;
         }
 
         .empty-state i {
@@ -216,18 +209,17 @@
             padding: 20px;
         }
 
-        /* 响应式适配：小屏幕调整布局 */
         @media (max-width: 768px) {
             .info-container {
                 flex-direction: column;
             }
             .pokemon-list-section, .pokemon-detail-section {
                 width: 100%;
-                height: auto; /* 小屏幕取消固定高度 */
+                height: auto; 
                 max-height: none;
             }
             .pokemon-list-section {
-                max-height: 300px; /* 小屏幕列表最大高度 */
+                max-height: 300px; 
                 margin-bottom: 10px;
             }
         }
@@ -261,15 +253,15 @@
     <script src="../js/data.js"></script>
     <script src="../js/utils.js"></script>
     <script>
-        // 配置DeepSeek API密钥（前端代码仍有泄露风险，生产环境建议通过后端代理）
+        // 配置DeepSeek API密钥
         const DEEPSEEK_API_KEY = 'sk-bb6c198c5f734d02b3dd432c6b956c54';
         const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
 
         let allPokemon = [];
-        let filteredPokemon = [];  // 新增：存储当前筛选后的宝可梦列表
+        let filteredPokemon = [];  
         let avgAbilities = null;
         let radarChart = null;
-        let currentAbortController = null; // 用于取消当前的API请求
+        let currentAbortController = null; 
 
         window.addEventListener('dataLoaded', () => {
             allPokemon = window.pokemonData || [];
@@ -332,13 +324,11 @@
         }
 
         function showPokemonDetail(index) {
-            // 如果有正在进行的请求，取消它
             if (currentAbortController) {
                 currentAbortController.abort();
                 currentAbortController = null;
             }
 
-            // 使用筛选后的列表获取数据，而不是原始的allPokemon
             if (index < 0 || index >= filteredPokemon.length) {
                 console.error('无效的宝可梦索引:', index);
                 return;
@@ -353,7 +343,7 @@
             const detailSection = document.getElementById('detailSection');
             const abilities = window.abilities;
 
-            // 渲染详情页面，包含AI介绍区域（初始显示加载状态）
+            // 渲染详情页面，包含AI介绍区域
             detailSection.innerHTML = `
                 <div class="detail-card">
                     <div class="detail-header">
@@ -416,11 +406,10 @@
             document.querySelector(`.pokemon-item[data-unique-id="${index}"]`).classList.add('active');
 
             renderRadarChart(pokemon);
-            // 调用API获取AI介绍（流式）
             fetchPokemonIntroStream(pokemon.Name);
         }
 
-        // 调用DeepSeek API获取宝可梦介绍（流式输出）
+        // 调用DeepSeek API获取宝可梦介绍
         async function fetchPokemonIntroStream(pokemonName) {
             const introSection = document.getElementById('aiIntroSection');
             const contentElement = document.createElement('p');
@@ -483,7 +472,7 @@
                         
                         if (trimmedLine.startsWith('data: ')) {
                             try {
-                                const jsonStr = trimmedLine.slice(6); // 移除'data: '前缀
+                                const jsonStr = trimmedLine.slice(6); 
                                 const data = JSON.parse(jsonStr);
                                 
                                 // 提取内容片段并累加
@@ -501,7 +490,6 @@
                 }
 
             } catch (error) {
-                // 忽略中止错误（用户主动切换宝可梦时会触发）
                 if (error.name !== 'AbortError') {
                     console.error('获取宝可梦介绍失败:', error);
                     introSection.innerHTML = `

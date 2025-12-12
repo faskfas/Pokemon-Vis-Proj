@@ -37,7 +37,7 @@
             max-width: 1400px;
             height: 80vh;
             min-height: 600px;
-            margin: 0 auto 30px; /* 与下方功能区保留间距 */
+            margin: 0 auto 30px; 
             background-color: var(--white);
             border-radius: var(--border-radius-lg);
             box-shadow: var(--shadow-soft);
@@ -46,7 +46,7 @@
             border: 3px solid var(--poke-red);
         }
 
-        /* 左侧功能区（保留原样式） */
+        /* 左侧功能区 */
         .left-panel {
             width: 280px;
             background: linear-gradient(135deg, var(--poke-red), var(--poke-red-dark));
@@ -132,7 +132,6 @@
             color: var(--pika-yellow);
         }
 
-        /* 右侧区域：保留原背景图，仅调整文字与图标 */
         .right-panel {
             flex: 1;
             position: relative;
@@ -140,19 +139,17 @@
             border-left: 3px solid var(--pika-yellow);
         }
 
-        /* 保留原背景图 */
         .bg-image {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
 
-        /* 调整文字位置：避开背景图中的皮卡丘主体 */
         .panel-caption {
             position: absolute;
             top: 30px;
             left: 30px;
-            max-width: 400px; /* 限制文字宽度，避免遮挡 */
+            max-width: 400px;
             z-index: 2;
             color: var(--white);
         }
@@ -174,7 +171,6 @@
             backdrop-filter: blur(2px);
         }
 
-        /* 底部徽章：删除小裙子，替换为宝可梦图标 */
         .badge-container {
             position: absolute;
             bottom: 30px;
@@ -207,7 +203,6 @@
             object-fit: contain;
         }
 
-        /* 恢复底部功能介绍交互区 */
         .intro-section {
             width: 100%;
             max-width: 1400px;
@@ -222,7 +217,6 @@
             border: 3px solid var(--pika-yellow);
         }
 
-        /* 交互皮卡丘样式 */
         .pokemon-character {
             width: 200px;
             height: 200px;
@@ -239,7 +233,6 @@
             position: relative;
         }
 
-        /* 皮卡丘上的精灵球装饰 */
         .pokemon-character::after {
             content: "";
             position: absolute;
@@ -290,7 +283,6 @@
             100% { transform: rotate(1080deg) scale(1); }
         }
 
-        /* 功能介绍文本区 */
         .intro-content {
             flex: 1;
         }
@@ -327,7 +319,6 @@
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        /* 响应式适配 */
         @media (max-width: 900px) {
             .main-container {
                 flex-direction: column;
@@ -361,7 +352,6 @@
                 width: 55px;
                 height: 55px;
             }
-            /* 功能区响应式 */
             .intro-section {
                 flex-direction: column;
                 text-align: center;
@@ -451,10 +441,8 @@
         </div>
 
         <div class="right-panel">
-            <!-- 保留原背景图 -->
             <img src="./imgs/9c016f5106c692c6730277983422cf47.jpg" class="bg-image" alt="宝可梦主题背景">
             
-            <!-- 调整后的文字区域 -->
             <div class="panel-caption">
                 <h2 class="caption-title">探索宝可梦的奇妙世界</h2>
                 <p class="caption-desc">
@@ -462,7 +450,6 @@
                 </p>
             </div>
 
-            <!-- 替换小裙子为宝可梦图标 -->
             <div class="badge-container">
                 <div class="badge">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/International_Pok%C3%A9mon_logo.svg/600px-International_Pok%C3%A9mon_logo.svg.png" alt="宝可梦标志">
@@ -477,7 +464,6 @@
         </div>
     </div>
 
-    <!-- 恢复底部功能介绍交互区 -->
     <div class="intro-section">
         <div class="pokemon-character" id="interactivePokemon">
             <img src="./imgs/tangmao.png" alt="皮卡丘交互精灵">
@@ -566,7 +552,6 @@
             currentIndex = (currentIndex + 1) % functionIntroductions.length;
         }
 
-        // 根据URL激活对应按钮（可选功能）
         document.addEventListener('DOMContentLoaded', () => {
             const currentPath = window.location.pathname;
             const funcButtons = document.querySelectorAll('.func-btn');

@@ -3,7 +3,7 @@ window.pokemonData = [];
 window.abilities = ["HP", "Attack", "Defense", "Sp. Atk", "Sp. Def", "Speed"];
 
 // 加载数据
-fetch('../Pokemon.json') // 子页面中路径为../Pokemon.json
+fetch('../Pokemon.json') 
     .then(response => {
         if (!response.ok) {
             throw new Error(`数据加载失败（状态码：${response.status}），请检查Pokemon.json是否存在`);

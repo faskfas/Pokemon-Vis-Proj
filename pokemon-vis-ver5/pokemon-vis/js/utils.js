@@ -1,4 +1,4 @@
-// 属性颜色映射（宝可梦官方配色）
+// 属性颜色映射
 window.getTypeColor = function(type) {
     const colorMap = {
         Grass: '#78C850', Fire: '#F08030', Water: '#6890F0', Electric: '#F8D030',
